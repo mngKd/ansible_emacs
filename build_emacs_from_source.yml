@@ -1,0 +1,66 @@
+---
+
+- name: Install emacs
+  hosts: localhost
+
+  tasks:
+    - name: Install repos
+      apt:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - build-essential
+        - autoconf
+        - texinfo
+        - libx11-dev
+        - libxpm-dev
+        - libjpeg-dev
+        - libpng-dev
+        - libgif-dev
+        - libtiff-dev
+        - libncurses-dev
+        - libgnutls-dev
+        - libgtk-3-dev
+        - libwebkit2gtk-4.0-dev
+        - git
+      become: true
+      become_method: sudo
+    
+    - name: Create git directory in home
+      file:
+        path: "{{ ansible_env.HOME }}/git"
+        state: directory
+
+    - name: Clone emacs repo
+      git:
+        repo: 'git://git.sv.gnu.org/emacs.git'
+        dest: "{{ ansible_env.HOME }}/git/emacs"
+        version: master
+
+    - name: Create ./configure file
+      shell:
+        cmd: sh autogen.sh
+        chdir: "{{ ansible_env.HOME }}/git/emacs"
+
+    - name: Configure emacs
+      shell:
+        cmd: sh configure --with-cairo --with-xwidgets --with-x-toolkit=gtk3
+        chdir: "{{ ansible_env.HOME }}/git/emacs"
+
+    - name: Get nr of cores
+      command: nproc --all
+      register: nproc
+
+    - name: Build emacs
+      shell:
+        cmd: make -j{{ nproc.stdout }}
+        chdir: "{{ ansible_env.HOME }}/git/emacs"
+
+    - name: Install emacs
+      shell:
+        cmd: make install
+        chdir: "{{ ansible_env.HOME }}/git/emacs"
+      become: true
+      become_method: sudo
+
+
